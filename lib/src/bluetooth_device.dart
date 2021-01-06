@@ -97,13 +97,16 @@ class BluetoothDevice {
         .invokeMethod('deviceState', id.toString())
         .then((buffer) => new protos.DeviceStateResponse.fromBuffer(buffer))
         .then((p) => BluetoothDeviceState.values[p.state.value]);
+    if(FlutterBlue.instance._deviceStateControllers[id.toString()] == null){
+      FlutterBlue.instance._deviceStateControllers[id.toString()] = StreamController.broadcast();
+    }
+    yield* FlutterBlue.instance._deviceStateControllers[id.toString()].stream
+      .map((p) => BluetoothDeviceState.values[p.state.value]);
+  }
 
-    yield* FlutterBlue.instance._methodStream
-        .where((m) => m.method == "DeviceState")
-        .map((m) => m.arguments)
-        .map((buffer) => new protos.DeviceStateResponse.fromBuffer(buffer))
-        .where((p) => p.remoteId == id.toString())
-        .map((p) => BluetoothDeviceState.values[p.state.value]);
+  void resetDeviceStateStream() async {
+    await FlutterBlue.instance._deviceStateControllers[id.toString()]?.close();
+    FlutterBlue.instance._deviceStateControllers[id.toString()] = StreamController.broadcast();
   }
 
   /// The MTU size in bytes

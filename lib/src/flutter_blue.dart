@@ -11,12 +11,21 @@ class FlutterBlue {
       new StreamController.broadcast(); // ignore: close_sinks
   Stream<MethodCall> get _methodStream => _methodStreamController
       .stream; // Used internally to dispatch methods from platform.
-
+  final Map<String, StreamController<protos.DeviceStateResponse>> _deviceStateControllers = {};
   /// Singleton boilerplate
   FlutterBlue._() {
     _channel.setMethodCallHandler((MethodCall call) {
-      _methodStreamController.add(call);
-      return;
+      switch(call.method){
+        case 'DeviceState':
+          protos.DeviceStateResponse response  = new protos.DeviceStateResponse.fromBuffer(call.arguments);
+          if(_deviceStateControllers[response.remoteId] != null){
+            _deviceStateControllers[response.remoteId].add(response);
+          }
+          return;
+        default:
+          _methodStreamController.add(call);
+          return;
+      }
     });
 
     _setLogLevelIfAvailable();
