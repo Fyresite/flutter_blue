@@ -36,9 +36,11 @@ class BluetoothDevice {
 
     await FlutterBlue.instance._channel
         .invokeMethod('connect', request.writeToBuffer());
-
-    await state.firstWhere((s) => s == BluetoothDeviceState.connected);
-
+    if((await state.isEmpty) == false){
+      //TODO find out why this extra call is needed to avoid an uncaught exception
+      await state.isEmpty;
+      await state.firstWhere((s) => s == BluetoothDeviceState.connected);
+    }
     timer?.cancel();
 
     return;
@@ -93,13 +95,13 @@ class BluetoothDevice {
 
   /// The current connection state of the device
   Stream<BluetoothDeviceState> get state async* {
+    if(FlutterBlue.instance._deviceStateControllers[id.toString()] == null){
+      FlutterBlue.instance._deviceStateControllers[id.toString()] = StreamController.broadcast();
+    }
     yield await FlutterBlue.instance._channel
         .invokeMethod('deviceState', id.toString())
         .then((buffer) => new protos.DeviceStateResponse.fromBuffer(buffer))
         .then((p) => BluetoothDeviceState.values[p.state.value]);
-    if(FlutterBlue.instance._deviceStateControllers[id.toString()] == null){
-      FlutterBlue.instance._deviceStateControllers[id.toString()] = StreamController.broadcast();
-    }
     yield* FlutterBlue.instance._deviceStateControllers[id.toString()].stream
       .map((p) => BluetoothDeviceState.values[p.state.value]);
   }
@@ -107,6 +109,7 @@ class BluetoothDevice {
   void resetDeviceStateStream() async {
     await FlutterBlue.instance._deviceStateControllers[id.toString()]?.close();
     FlutterBlue.instance._deviceStateControllers[id.toString()] = StreamController.broadcast();
+    await FlutterBlue.instance._channel.invokeMethod('deviceState', id.toString());
   }
 
   /// The MTU size in bytes
