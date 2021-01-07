@@ -41,7 +41,7 @@ class FlutterBlue {
         case 'WriteCharacteristicResponse':
           protos.WriteCharacteristicResponse response  = new protos.WriteCharacteristicResponse.fromBuffer(call.arguments);
           if(_writeCharacteristicControllers[response.request.remoteId] != null){
-            _writeCharacteristicControllers[response.request..remoteId].add(response);
+            _writeCharacteristicControllers[response.request.remoteId].add(response);
           }
           return;
         case 'SetNotificationResponse':
