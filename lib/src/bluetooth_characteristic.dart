@@ -42,20 +42,22 @@ class BluetoothCharacteristic {
         properties = new CharacteristicProperties.fromProto(p.properties),
         _value = BehaviorSubject.seeded(p.value);
 
-  Stream<BluetoothCharacteristic> get _onCharacteristicChangedStream =>
-      FlutterBlue.instance._methodStream
-          .where((m) => m.method == "OnCharacteristicChanged")
-          .map((m) => m.arguments)
-          .map(
-              (buffer) => new protos.OnCharacteristicChanged.fromBuffer(buffer))
-          .where((p) => p.remoteId == deviceId.toString())
-          .map((p) => new BluetoothCharacteristic.fromProto(p.characteristic))
-          .where((c) => c.uuid == uuid)
-          .map((c) {
-        // Update the characteristic with the new values
-        _updateDescriptors(c.descriptors);
-        return c;
-      });
+  Stream<BluetoothCharacteristic> get _onCharacteristicChangedStream {
+
+    if(FlutterBlue.instance._changedCharacteristicControllers[deviceId.toString()] == null){
+      FlutterBlue.instance._changedCharacteristicControllers[deviceId.toString()] = StreamController.broadcast();
+    }
+
+    return FlutterBlue.instance._changedCharacteristicControllers[deviceId.toString()].stream
+        .map((p) => new BluetoothCharacteristic.fromProto(p.characteristic))
+        .where((c) => c.uuid == uuid)
+        .map((c) {
+      // Update the characteristic with the new values
+      _updateDescriptors(c.descriptors);
+      return c;
+    });
+  }
+
 
   Stream<List<int>> get _onValueChangedStream =>
       _onCharacteristicChangedStream.map((c) => c.lastValue);
@@ -82,13 +84,12 @@ class BluetoothCharacteristic {
     await FlutterBlue.instance._channel
         .invokeMethod('readCharacteristic', request.writeToBuffer());
 
-    return FlutterBlue.instance._methodStream
-        .where((m) => m.method == "ReadCharacteristicResponse")
-        .map((m) => m.arguments)
-        .map((buffer) =>
-            new protos.ReadCharacteristicResponse.fromBuffer(buffer))
+    if(FlutterBlue.instance._readCharacteristicControllers[request.remoteId] == null){
+      FlutterBlue.instance._readCharacteristicControllers[request.remoteId] = StreamController.broadcast();
+    }
+    
+    return FlutterBlue.instance._readCharacteristicControllers[request.remoteId].stream
         .where((p) =>
-            (p.remoteId == request.remoteId) &&
             (p.characteristic.uuid == request.characteristicUuid) &&
             (p.characteristic.serviceUuid == request.serviceUuid))
         .map((p) => p.characteristic.value)
@@ -124,13 +125,12 @@ class BluetoothCharacteristic {
       return result;
     }
 
-    return FlutterBlue.instance._methodStream
-        .where((m) => m.method == "WriteCharacteristicResponse")
-        .map((m) => m.arguments)
-        .map((buffer) =>
-            new protos.WriteCharacteristicResponse.fromBuffer(buffer))
+    if(FlutterBlue.instance._writeCharacteristicControllers[request.remoteId] == null){
+      FlutterBlue.instance._writeCharacteristicControllers[request.remoteId] = StreamController.broadcast();
+    }
+
+    return FlutterBlue.instance._writeCharacteristicControllers[request.remoteId].stream
         .where((p) =>
-            (p.request.remoteId == request.remoteId) &&
             (p.request.characteristicUuid == request.characteristicUuid) &&
             (p.request.serviceUuid == request.serviceUuid))
         .first
@@ -152,12 +152,12 @@ class BluetoothCharacteristic {
     await FlutterBlue.instance._channel
         .invokeMethod('setNotification', request.writeToBuffer());
 
-    return FlutterBlue.instance._methodStream
-        .where((m) => m.method == "SetNotificationResponse")
-        .map((m) => m.arguments)
-        .map((buffer) => new protos.SetNotificationResponse.fromBuffer(buffer))
+    if(FlutterBlue.instance._notificationControllers[request.remoteId] == null){
+      FlutterBlue.instance._notificationControllers[request.remoteId] = StreamController.broadcast();
+    }
+
+    return FlutterBlue.instance._notificationControllers[request.remoteId].stream
         .where((p) =>
-            (p.remoteId == request.remoteId) &&
             (p.characteristic.uuid == request.characteristicUuid) &&
             (p.characteristic.serviceUuid == request.serviceUuid))
         .first
@@ -166,6 +166,19 @@ class BluetoothCharacteristic {
       _updateDescriptors(c.descriptors);
       return (c.isNotifying == notify);
     });
+  }
+
+  void resetStreams() async {
+    await Future.wait([
+      FlutterBlue.instance._changedCharacteristicControllers[deviceId.toString()]?.close(),
+      FlutterBlue.instance._readCharacteristicControllers[deviceId.toString()]?.close(),
+      FlutterBlue.instance._writeCharacteristicControllers[deviceId.toString()]?.close(),
+      FlutterBlue.instance._notificationControllers[deviceId.toString()]?.close(),
+    ]);
+    FlutterBlue.instance._changedCharacteristicControllers[deviceId.toString()] = StreamController.broadcast();
+    FlutterBlue.instance._readCharacteristicControllers[deviceId.toString()] = StreamController.broadcast();
+    FlutterBlue.instance._writeCharacteristicControllers[deviceId.toString()] = StreamController.broadcast();
+    FlutterBlue.instance._notificationControllers[deviceId.toString()] = StreamController.broadcast();
   }
 
   @override

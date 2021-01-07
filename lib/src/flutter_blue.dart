@@ -12,6 +12,10 @@ class FlutterBlue {
   Stream<MethodCall> get _methodStream => _methodStreamController
       .stream; // Used internally to dispatch methods from platform.
   final Map<String, StreamController<protos.DeviceStateResponse>> _deviceStateControllers = {};
+  final Map<String, StreamController<protos.OnCharacteristicChanged>> _changedCharacteristicControllers = {};
+  final Map<String, StreamController<protos.ReadCharacteristicResponse>> _readCharacteristicControllers = {};
+  final Map<String, StreamController<protos.WriteCharacteristicResponse>> _writeCharacteristicControllers = {};
+  final Map<String, StreamController<protos.SetNotificationResponse>> _notificationControllers = {};
   /// Singleton boilerplate
   FlutterBlue._() {
     _channel.setMethodCallHandler((MethodCall call) {
@@ -20,6 +24,30 @@ class FlutterBlue {
           protos.DeviceStateResponse response  = new protos.DeviceStateResponse.fromBuffer(call.arguments);
           if(_deviceStateControllers[response.remoteId] != null){
             _deviceStateControllers[response.remoteId].add(response);
+          }
+          return;
+        case 'OnCharacteristicChanged':
+          protos.OnCharacteristicChanged response  = new protos.OnCharacteristicChanged.fromBuffer(call.arguments);
+          if(_changedCharacteristicControllers[response.remoteId] != null){
+            _changedCharacteristicControllers[response.remoteId].add(response);
+          }
+          return;
+        case 'ReadCharacteristicResponse':
+          protos.ReadCharacteristicResponse response  = new protos.ReadCharacteristicResponse.fromBuffer(call.arguments);
+          if(_readCharacteristicControllers[response.remoteId] != null){
+            _readCharacteristicControllers[response.remoteId].add(response);
+          }
+          return;
+        case 'WriteCharacteristicResponse':
+          protos.WriteCharacteristicResponse response  = new protos.WriteCharacteristicResponse.fromBuffer(call.arguments);
+          if(_writeCharacteristicControllers[response.request.remoteId] != null){
+            _writeCharacteristicControllers[response.request..remoteId].add(response);
+          }
+          return;
+        case 'SetNotificationResponse':
+          protos.SetNotificationResponse response  = new protos.SetNotificationResponse.fromBuffer(call.arguments);
+          if(_notificationControllers[response.remoteId] != null){
+            _notificationControllers[response.remoteId].add(response);
           }
           return;
         default:
