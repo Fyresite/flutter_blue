@@ -170,10 +170,14 @@ class BluetoothCharacteristic {
 
   void resetStreams() async {
     await Future.wait([
-      FlutterBlue.instance._changedCharacteristicControllers[deviceId.toString()]?.close(),
-      FlutterBlue.instance._readCharacteristicControllers[deviceId.toString()]?.close(),
-      FlutterBlue.instance._writeCharacteristicControllers[deviceId.toString()]?.close(),
-      FlutterBlue.instance._notificationControllers[deviceId.toString()]?.close(),
+      if(FlutterBlue.instance._changedCharacteristicControllers[deviceId.toString()] != null) 
+        FlutterBlue.instance._changedCharacteristicControllers[deviceId.toString()].close(),
+      if(FlutterBlue.instance._readCharacteristicControllers[deviceId.toString()] != null) 
+        FlutterBlue.instance._readCharacteristicControllers[deviceId.toString()].close(),
+      if(FlutterBlue.instance._writeCharacteristicControllers[deviceId.toString()] != null) 
+        FlutterBlue.instance._writeCharacteristicControllers[deviceId.toString()].close(),
+      if(FlutterBlue.instance._notificationControllers[deviceId.toString()] != null) 
+        FlutterBlue.instance._notificationControllers[deviceId.toString()].close(),
     ]);
     FlutterBlue.instance._changedCharacteristicControllers[deviceId.toString()] = StreamController.broadcast();
     FlutterBlue.instance._readCharacteristicControllers[deviceId.toString()] = StreamController.broadcast();
